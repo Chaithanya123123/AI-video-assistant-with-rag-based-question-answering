@@ -30,11 +30,18 @@ def load_model():
 
 
 def transcribe_chunk_whisper(chunk_path: str) -> str:
+    import soundfile as sf
+    try:
+        info = sf.info(chunk_path)
+        if info.frames < 1600:  # less than 0.1 s at 16 kHz — skip
+            print(f"  ⚠️  Skipping {chunk_path} (only {info.frames} frames — too short for Whisper)")
+            return ""
+    except Exception:
+        pass  # if soundfile can't read it, let Whisper try anyway
 
-    model = load_model()  
-
-    result = model.transcribe(chunk_path, task="transcribe")  
-    return result["text"]  
+    model = load_model()
+    result = model.transcribe(chunk_path, task="transcribe")
+    return result["text"]
 
 
 def _send_to_sarvam(piece_path: str) -> str:
