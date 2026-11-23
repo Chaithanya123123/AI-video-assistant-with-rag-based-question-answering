@@ -1,3 +1,5 @@
+import html
+
 import streamlit as st
 import time
 from dotenv import load_dotenv
@@ -314,6 +316,11 @@ for key, default in {
     if key not in st.session_state:
         st.session_state[key] = default
 
+def esc(value) -> str:
+    """Transcripts and model output are shown inside HTML, so escape them first."""
+    return html.escape(str(value)).replace("\n", "<br>")
+
+
 # ─── Helpers ────────────────────────────────────────────────────────────────────
 def step_status(steps: dict, key: str) -> str:
     s = steps.get(key, "pending")
@@ -374,10 +381,14 @@ if run_btn:
 
         def update_step(key, state):
             st.session_state.pipeline_steps[key] = state
+            if state == "active":
+                progress_placeholder.info(f"⚙️ {STEP_LABELS[key]}…")
 
         try:
-            with progress_placeholder.container():
-                st.info("⚙️ Pipeline running — see sidebar for live status…")
+            STEP_LABELS = {
+                "audio": "Processing audio", "transcript": "Transcribing", "title": "Writing title",
+                "summary": "Summarising", "extract": "Extracting key points", "rag": "Preparing questions and answers",
+            }
 
             update_step("audio", "active")
             chunks = process_input(source)
@@ -435,7 +446,7 @@ if st.session_state.result:
     <div class="card">
         <div class="card-title">📌 Session Title</div>
         <div style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;color:var(--text)">
-            {r['title']}
+            {esc(r['title'])}
         </div>
     </div>""", unsafe_allow_html=True)
 
@@ -446,12 +457,12 @@ if st.session_state.result:
         st.markdown(f"""
         <div class="card">
             <div class="card-title">📋 Summary</div>
-            <div class="card-content">{r['summary']}</div>
+            <div class="card-content">{esc(r['summary'])}</div>
         </div>""", unsafe_allow_html=True)
 
     with col2:
         with st.expander("📝 Full Transcript", expanded=False):
-            st.markdown(f'<div class="transcript-box">{r["transcript"]}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="transcript-box">{esc(r["transcript"])}</div>', unsafe_allow_html=True)
 
     # Second row: action items | decisions | questions
     c1, c2, c3 = st.columns(3, gap="medium")
@@ -460,21 +471,21 @@ if st.session_state.result:
         st.markdown(f"""
         <div class="card">
             <div class="card-title">✅ Action Items</div>
-            <div class="card-content">{r['action_items']}</div>
+            <div class="card-content">{esc(r['action_items'])}</div>
         </div>""", unsafe_allow_html=True)
 
     with c2:
         st.markdown(f"""
         <div class="card">
             <div class="card-title">🔑 Key Decisions</div>
-            <div class="card-content">{r['key_decisions']}</div>
+            <div class="card-content">{esc(r['key_decisions'])}</div>
         </div>""", unsafe_allow_html=True)
 
     with c3:
         st.markdown(f"""
         <div class="card">
             <div class="card-title">❓ Open Questions</div>
-            <div class="card-content">{r['open_questions']}</div>
+            <div class="card-content">{esc(r['open_questions'])}</div>
         </div>""", unsafe_allow_html=True)
 
     st.markdown("---")
@@ -490,13 +501,13 @@ if st.session_state.result:
                 chat_html += f"""
                 <div class="chat-msg" style="align-items:flex-end">
                     <span class="chat-label user-label">You</span>
-                    <div class="chat-bubble user-bubble">{msg['content']}</div>
+                    <div class="chat-bubble user-bubble">{esc(msg['content'])}</div>
                 </div>"""
             else:
                 chat_html += f"""
                 <div class="chat-msg" style="align-items:flex-start">
                     <span class="chat-label bot-label">🤖 Assistant</span>
-                    <div class="chat-bubble bot-bubble">{msg['content']}</div>
+                    <div class="chat-bubble bot-bubble">{esc(msg['content'])}</div>
                 </div>"""
         chat_html += '</div>'
         st.markdown(chat_html, unsafe_allow_html=True)
@@ -516,7 +527,11 @@ if st.session_state.result:
 
     if send_btn and user_input.strip():
         with st.spinner("Thinking…"):
-            answer = ask_question(r["rag_chain"], user_input.strip())
+            try:
+                answer = ask_question(r["rag_chain"], user_input.strip())
+            except Exception as e:
+                st.error(f"Could not get an answer: {e}")
+                st.stop()
         st.session_state.chat_history.append({"role": "user",      "content": user_input.strip()})
         st.session_state.chat_history.append({"role": "assistant", "content": answer})
         st.rerun()

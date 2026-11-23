@@ -26,6 +26,9 @@ chromadb>=0.5.0                   # Local vector store
 sentence-transformers>=3.0.0      # HuggingFace embedding models
 langchain-huggingface>=0.0.3      # LangChain ↔ HuggingFace embeddings bridge
 huggingface-hub>=0.23.0           # Model downloading from HuggingFace Hub
+langchain-chroma>=0.1.2           # Chroma vector store integration
+langchain-text-splitters>=0.2.0   # Transcript chunking
+soundfile>=0.12.1                 # Audio length checks
 tiktoken>=0.7.0                   # Token counting for text splitting
 
 # ── Streamlit UI ──────────────────────────────────────────────────────────────

@@ -29,6 +29,12 @@ def build_vector_store(transcript : str)->Chroma:
     ]
 
     embeddings = get_embeddings()
+    # Start clean, otherwise answers would mix in transcripts from earlier videos.
+    Chroma(
+        collection_name=COLLECTION_NAME,
+        embedding_function=embeddings,
+        persist_directory=CHROMA_DIR,
+    ).reset_collection()
     vector_store = Chroma.from_documents(
         documents= docs,
         embedding=embeddings,
